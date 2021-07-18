@@ -3,7 +3,7 @@ module.exports = {
         return req.app.db.get("books")
     },
     getBook(req, bookInfo) {
-        return req.app.db.get("books").find(bookInfo).value()
+        return req.app.db.get("books").find(bookInfo)
     },
 
 }

@@ -28,6 +28,25 @@ const idLength = 8;
  *         id: d5fE_asz
  *         title: The New Turing Omnibus
  *         author: Alexander K. Dewdney
+ * 
+ *     EditBook:
+ *       type: object
+ *       required:
+ *         - title
+ *         - author
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: The auto-generated id of the book
+ *         title:
+ *           type: string
+ *           description: The book title
+ *         author:
+ *           type: string
+ *           description: The book author
+ *       example:
+ *         title: The New Turing Omnibus
+ *         author: Alexander K. Dewdney
  */
 
 /**
@@ -55,7 +74,7 @@ const idLength = 8;
  */
 
 router.get("/", (req, res) => {
-    const books = getBooks;
+    const books = getBooks(req);
 
     res.send(books);
 });
@@ -85,10 +104,15 @@ router.get("/", (req, res) => {
  */
 
 router.get("/:id", (req, res) => {
-    const book = req.app.db.get("books").find({ id: req.params.id }).value();
+    const book = getBook(req, { id: req.params.id }).value();
 
-    if (!book) {
-        res.sendStatus(404)
+    try {
+
+        if (!book) throw new Error("The book was not found")
+
+    } catch (error) {
+        return res.send(error.message).status(404)
+
     }
 
     res.send(book);
@@ -105,7 +129,7 @@ router.get("/:id", (req, res) => {
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Book'
+ *             $ref: '#/components/schemas/EditBook'
  *     responses:
  *       200:
  *         description: The book was successfully created
@@ -113,8 +137,8 @@ router.get("/:id", (req, res) => {
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Book'
- *       500:
- *         description: Some server error
+ *       409:
+ *         description: The book is already exists
  */
 
 router.post("/", (req, res) => {
@@ -124,11 +148,18 @@ router.post("/", (req, res) => {
             ...req.body,
         };
 
-        getBooks.push(book).write();
+        const bookId = getBook(req, { id: book.id }).value()
+        const title = getBook(req, { title: book.title }).value()
+        const author = getBook(req, { author: book.author }).value()
+
+        if (bookId || (title && author)) throw Error("The book is already exists")
+
+        getBooks(req).push(book).write();
 
         res.send(book)
+
     } catch (error) {
-        return res.status(500).send(error);
+        return res.send(error.message).status(409);
     }
 });
 
@@ -150,7 +181,7 @@ router.post("/", (req, res) => {
  *      content:
  *        application/json:
  *          schema:
- *            $ref: '#/components/schemas/Book'
+ *            $ref: '#/components/schemas/EditBook'
  *    responses:
  *      200:
  *        description: The book was updated
@@ -160,21 +191,17 @@ router.post("/", (req, res) => {
  *              $ref: '#/components/schemas/Book'
  *      404:
  *        description: The book was not found
- *      500:
- *        description: Some error happened
  */
 
 router.put("/:id", (req, res) => {
     try {
-        req.app.db
-            .get("books")
-            .find({ id: req.params.id })
-            .assign(req.body)
-            .write();
+        const book = getBook(req, { id: req.params.id })
+        if (!book) throw Error("The book was not found")
+        book.assign(req.body).write();
+        res.send(book);
 
-        res.send(req.app.db.get("books").find({ id: req.params.id }));
     } catch (error) {
-        return res.status(500).send(error);
+        return res.send(error.message).status(404);
     }
 });
 
@@ -200,9 +227,15 @@ router.put("/:id", (req, res) => {
  */
 
 router.delete("/:id", (req, res) => {
-    getBooks.remove({ id: req.params.id }).write();
+    try {
+        const book = getBook(req, { id: req.params.id })
+        if (!book) throw Error("The book was not found")
+        getBooks(req).remove({ id: req.params.id }).write();
+        res.send("The book was deleted").status(200);
+    } catch (error) {
+        return res.send(error.message).status(404);
+    }
 
-    res.sendStatus(200);
 });
 
 module.exports = router;
