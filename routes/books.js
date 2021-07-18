@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { nanoid } = require("nanoid");
+const { getBooks, getBook } = require("./getBooks");
 
 const idLength = 8;
 
@@ -54,7 +55,7 @@ const idLength = 8;
  */
 
 router.get("/", (req, res) => {
-    const books = req.app.db.get("books");
+    const books = getBooks;
 
     res.send(books);
 });
@@ -123,7 +124,7 @@ router.post("/", (req, res) => {
             ...req.body,
         };
 
-        req.app.db.get("books").push(book).write();
+        getBooks.push(book).write();
 
         res.send(book)
     } catch (error) {
@@ -199,7 +200,7 @@ router.put("/:id", (req, res) => {
  */
 
 router.delete("/:id", (req, res) => {
-    req.app.db.get("books").remove({ id: req.params.id }).write();
+    getBooks.remove({ id: req.params.id }).write();
 
     res.sendStatus(200);
 });
